@@ -1,0 +1,21 @@
+on utilise la foncton crt_printf c'est une fonction qui vient du model stdcall. cet appel est réalisé aprés avoir push 42
+
+C.
+i = 3
+n=5
+
+l=2
+j=1
+k=2
+
+i = 4
+l = 3
+j=2
+k=3
+
+i=5
+l= 5
+j =3
+k= 5
+
+c'est la suite de fibonacci 
