@@ -18,6 +18,10 @@ includelib c:\masm32\lib\msvcrt.lib
     formatString db "%u ", 0  ; Format string for file size
     sizeString db 32 dup(?)       ; Buffer for formatted file size
     tabString db "      ", 0  ; Tab character
+    fileCountString db "%u File(s)", 0 ; Format string for file count
+    fileCount DWORD ?
+    totalSize DWORD 0     ; Variable to hold the total size
+    totalSizeString db "    %u bytes", 0 ; Format string for file count
 
 .CODE
 
@@ -55,6 +59,9 @@ copyLoop:
     cmp eax, INVALID_HANDLE_VALUE
     je searchFailed
 
+    ; Initialize the file count for the directory
+    mov esi, 0 ; File count
+
     ; Loop through all files
 nextFile:
     test findData.dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY
@@ -64,8 +71,13 @@ nextFile:
 
     ; Print the file size
     mov eax, findData.nFileSizeLow  ; Get the low-order 32 bits of the file size
+    add totalSize, eax
     invoke crt_printf, offset formatString, eax
-    
+
+
+    ; Increment the file count
+    inc fileCount
+
     ; Print the file name
     jmp printFileName
 
@@ -74,6 +86,8 @@ printDir:
     invoke crt_printf, offset dirString
     invoke crt_printf, offset tabString ; Print a tab for formatting
 
+    ; Increment the file count
+    inc esi
 
     ; Print the name for the files and folders
 printFileName:
@@ -89,8 +103,6 @@ printFileName:
     lea eax, findData.cFileName
     cmp byte ptr [eax], '.'
     je getNextFile
-
-    
 getNextFile:
     ; Get the next file
     invoke FindNextFile, ebx, offset findData
@@ -135,6 +147,15 @@ copyDirectoryNameLoop2:
     test al, al
     jnz copyDirectoryNameLoop2
 
+    ; Print the number of files
+    invoke crt_printf, offset fileCountString, fileCount
+    mov fileCount,0
+
+    invoke crt_printf, offset totalSizeString, totalSize
+    invoke crt_printf, offset newLine
+    mov totalSize,0
+
+    
     ; Call RecursiveSearch recursively
     invoke RecursiveSearch, offset buffer
 
@@ -157,6 +178,14 @@ getNextDirectory:
 
     ; Close the search handle
     invoke FindClose, ebx
+
+    ; Print the number of files
+    invoke crt_printf, offset fileCountString, fileCount
+    invoke crt_printf, offset totalSizeString, totalSize
+    invoke crt_printf, offset newLine
+    mov totalSize,0
+    mov fileCount,0
+
 
     ret
 searchFailed:
