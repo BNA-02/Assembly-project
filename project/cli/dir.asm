@@ -14,6 +14,10 @@ includelib c:\masm32\lib\msvcrt.lib
     searchPattern db 260 dup(?)
     findData WIN32_FIND_DATA <>
     newLine db 10, 0 ; '\n' in ASCII is 10
+    dirString db "<DIR>", 0 ; <DIR> string
+    formatString db "%u ", 0  ; Format string for file size
+    sizeString db 32 dup(?)       ; Buffer for formatted file size
+    tabString db "      ", 0  ; Tab character
 
 .CODE
 
@@ -53,8 +57,27 @@ copyLoop:
 
     ; Loop through all files
 nextFile:
+    test findData.dwFileAttributes, FILE_ATTRIBUTE_DIRECTORY
+    jnz printDir
+
+    invoke crt_printf, offset tabString ; Print a tab for formatting
+
+    ; Print the file size
+    mov eax, findData.nFileSizeLow  ; Get the low-order 32 bits of the file size
+    invoke crt_printf, offset formatString, eax
+    
     ; Print the file name
-    invoke crt_printf, offset findData.dwFileAttributes
+    jmp printFileName
+
+    ; Print <DIR> in front of directories
+printDir:
+    invoke crt_printf, offset dirString
+    invoke crt_printf, offset tabString ; Print a tab for formatting
+
+
+    ; Print the name for the files and folders
+printFileName:
+    ; Print the file name
     invoke crt_printf, offset findData.cFileName
     invoke crt_printf, offset newLine
 
@@ -67,6 +90,7 @@ nextFile:
     cmp byte ptr [eax], '.'
     je getNextFile
 
+    
 getNextFile:
     ; Get the next file
     invoke FindNextFile, ebx, offset findData
