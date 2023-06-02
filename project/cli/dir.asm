@@ -9,6 +9,9 @@ include c:\masm32\include\msvcrt.inc
 includelib c:\masm32\lib\kernel32.lib
 includelib c:\masm32\lib\msvcrt.lib
 
+
+STACK_SIZE equ 100   ; Define the size of the stack
+
 .DATA
     buffer db 260 dup(?) ; MAX_PATH = 260
     searchPattern db 260 dup(?)
@@ -20,9 +23,17 @@ includelib c:\masm32\lib\msvcrt.lib
     sizeString db 32 dup(?)       ; Buffer for formatted file size
     tabString db "      ", 0  ; Tab character
     fileCountString db "%u File(s)", 0 ; Format string for file count
-    fileCount DWORD ?
-    totalSize DWORD 0     ; Variable to hold the total size
-    totalSizeString db "    %u bytes", 0 ; Format string for file count
+    fileCount DWORD ? ; Variable to hold the file count
+    folderSize DWORD 0     ; Variable to hold the folder size
+    folderSizeString db "    %u bytes", 0 ; Format string for folder size
+    dirCountString db "%u Dir(s)", 0 ; Format string for directory count
+    dirCount DWORD ? ; Variable to hold the directory count
+    totalfilecount DWORD ? ; Variable to hold the total files count
+    totalfileSize DWORD 0  ; Variable to hold the total files size
+    directoryIndex dd 0            ; Index to keep track of the next available slot in the array
+    directoryNames db 256 dup(0) ; Array to store directory names
+    stack db STACK_SIZE dup(0)   ; Define the stack as an array of bytes
+    stack_top db 0   ; Pointer to the top of the stack
 
 .CODE
 
@@ -75,7 +86,7 @@ nextFile:
 
     ; Print the file size
     mov eax, findData.nFileSizeLow  ; Get the low-order 32 bits of the file size
-    add totalSize, eax
+    add folderSize, eax
     invoke crt_printf, offset formatString, eax
 
 
@@ -90,8 +101,14 @@ printDir:
     invoke crt_printf, offset dirString
     invoke crt_printf, offset tabString ; Print a tab for formatting
 
+    inc dirCount
+
     ; Increment the file count
     inc esi
+
+    ; Save the directory name in the global variable
+    mov eax, offset findData.cFileName
+    pushad
 
     ; Print the name for the files and folders
 printFileName:
@@ -119,6 +136,10 @@ getNextFile:
     ; Restart the search for directories
     invoke FindFirstFile, offset searchPattern, offset findData
     mov ebx, eax ; Store the search handle in ebx
+
+    ; Check if the search was successful
+    cmp eax, INVALID_HANDLE_VALUE
+    je searchFailed
 
     ; Loop through all directories
 nextDirectory:
@@ -153,13 +174,17 @@ copyDirectoryNameLoop2:
 
     ; Print the number of files
     invoke crt_printf, offset fileCountString, fileCount
+    mov edx,fileCount
+    add totalfilecount,edx
     mov fileCount,0
-
-    invoke crt_printf, offset totalSizeString, totalSize
+    
+    ; Print the size of the folder
+    invoke crt_printf, offset folderSizeString, folderSize
     invoke crt_printf, offset newLine
     invoke crt_printf, offset newLine
-
-    mov totalSize,0
+    mov edx,folderSize
+    add totalfileSize,edx
+    mov folderSize,0
 
     
     ; Call RecursiveSearch recursively
@@ -168,13 +193,6 @@ copyDirectoryNameLoop2:
     ; Remove the directory name from the path
     mov edi, offset buffer
     dec edi
-removeDirectoryNameLoop:
-    cmp byte ptr [edi], '\'
-    je removeDirectoryNameDone
-    dec edi
-    jmp removeDirectoryNameLoop
-removeDirectoryNameDone:
-    mov byte ptr [edi], 0
 
 getNextDirectory:
     ; Get the next directory
@@ -187,17 +205,45 @@ getNextDirectory:
 
     ; Print the number of files
     invoke crt_printf, offset fileCountString, fileCount
-    invoke crt_printf, offset totalSizeString, totalSize
+    invoke crt_printf, offset folderSizeString, folderSize
     invoke crt_printf, offset newLine
     invoke crt_printf, offset newLine
 
-    mov totalSize,0
+    ; Add the fileCount to the totalfilecount
+    mov edx,fileCount
+    add totalfilecount,edx
+
+    ; Add the folderSize to the totalfileSize
+    mov edx,folderSize
+    add totalfileSize,edx
+    mov folderSize,0
     mov fileCount,0
 
+    invoke crt_printf, offset fileCountString, totalfilecount
+    invoke crt_printf, offset folderSizeString, totalfileSize
+    invoke crt_printf, offset newLine
+    invoke crt_printf, offset dirCountString, dirCount
+    invoke crt_printf, offset newLine
 
     ret
 searchFailed:
+    cmp eax, 0
+    jle noPreviousDirectory
+
+    ; Get the directory name from the stack
+    pop eax
+
+    ; Perform recursive search on the directory
+    invoke RecursiveSearch, eax
+
+    ; Handle the result of the recursive search if necessary
+
     ret
+
+noPreviousDirectory:
+    ; Handle the case when there are no previous directory names in the array
+    ret
+
 RecursiveSearch endp
 
 start:
