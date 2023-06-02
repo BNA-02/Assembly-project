@@ -49,8 +49,8 @@ fibonacci_negative:
 fibonacci ENDP
 
 start:
-    ; Calculate the Fibonacci number for n = -3
-    mov eax, 5              ; Value of n = -3
+    ; Calculate the Fibonacci number for n = 5
+    mov eax, 5              ; Value of n = 5
     invoke fibonacci, eax           ; Call the fibonacci function
 
     ; Store the result in a variable
