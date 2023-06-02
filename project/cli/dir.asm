@@ -15,6 +15,7 @@ includelib c:\masm32\lib\msvcrt.lib
     findData WIN32_FIND_DATA <>
     newLine db 10, 0 ; '\n' in ASCII is 10
     dirString db "<DIR>", 0 ; <DIR> string
+    pathFormat db " Directory of %s", 0 ; Format string for path
     formatString db "%u ", 0  ; Format string for file size
     sizeString db 32 dup(?)       ; Buffer for formatted file size
     tabString db "      ", 0  ; Tab character
@@ -28,9 +29,12 @@ includelib c:\masm32\lib\msvcrt.lib
 RecursiveSearch proc uses ebx esi edi path:DWORD
     ; print the current directory 
     push path
+    push offset pathFormat
     call crt_printf
     add esp, 8
     invoke crt_printf, offset newLine
+    invoke crt_printf, offset newLine
+
     
     ; Copy the directory to the search pattern
     mov esi, path
@@ -153,6 +157,8 @@ copyDirectoryNameLoop2:
 
     invoke crt_printf, offset totalSizeString, totalSize
     invoke crt_printf, offset newLine
+    invoke crt_printf, offset newLine
+
     mov totalSize,0
 
     
@@ -183,6 +189,8 @@ getNextDirectory:
     invoke crt_printf, offset fileCountString, fileCount
     invoke crt_printf, offset totalSizeString, totalSize
     invoke crt_printf, offset newLine
+    invoke crt_printf, offset newLine
+
     mov totalSize,0
     mov fileCount,0
 
